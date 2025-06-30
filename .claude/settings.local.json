@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:langchain-ai.github.io)",
+      "Bash(find:*)"
+    ],
+    "deny": []
+  }
+}

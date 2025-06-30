@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>营养师AI助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 800px;
+            width: 90%;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .upload-section {
+            margin-bottom: 30px;
+        }
+        
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+        }
+        
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e6f3ff;
+            transform: scale(1.02);
+        }
+        
+        .upload-icon {
+            font-size: 3em;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        
+        .upload-text {
+            color: #333;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+        
+        .upload-hint {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .preferences {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .preferences h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .preference-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .preference-item {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .preference-item label {
+            display: block;
+            color: #555;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .preference-item input,
+        .preference-item select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .analyze-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .analyze-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .result-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .result-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 5px;
+        }
+        
+        .nutrition-facts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .nutrition-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .nutrition-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .nutrition-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .recommendations {
+            list-style: none;
+        }
+        
+        .recommendations li {
+            background: white;
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .error {
+            background: #ffe6e6;
+            color: #d63031;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🥗 营养师AI助手</h1>
+            <p>上传食物图片，获得专业的营养分析和健康建议</p>
+        </div>
+        
+        <div class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📸</div>
+                <div class="upload-text">点击或拖拽上传食物图片</div>
+                <div class="upload-hint">支持 JPG, PNG, GIF 格式，最大 10MB</div>
+            </div>
+            <input type="file" id="fileInput" accept="image/*">
+            <img id="previewImage" class="preview-image" style="display: none;">
+        </div>
+        
+        <div class="preferences">
+            <h3>个人信息设置 (可选)</h3>
+            <div class="preference-row">
+                <div class="preference-item">
+                    <label for="age">年龄</label>
+                    <input type="number" id="age" placeholder="25">
+                </div>
+                <div class="preference-item">
+                    <label for="gender">性别</label>
+                    <select id="gender">
+                        <option value="">请选择</option>
+                        <option value="male">男</option>
+                        <option value="female">女</option>
+                    </select>
+                </div>
+                <div class="preference-item">
+                    <label for="weight">体重 (kg)</label>
+                    <input type="number" id="weight" placeholder="65">
+                </div>
+                <div class="preference-item">
+                    <label for="height">身高 (cm)</label>
+                    <input type="number" id="height" placeholder="170">
+                </div>
+            </div>
+            <div class="preference-row">
+                <div class="preference-item">
+                    <label for="activity">运动水平</label>
+                    <select id="activity">
+                        <option value="low">低强度</option>
+                        <option value="moderate" selected>中等强度</option>
+                        <option value="high">高强度</option>
+                    </select>
+                </div>
+                <div class="preference-item">
+                    <label for="restrictions">饮食限制</label>
+                    <input type="text" id="restrictions" placeholder="如：素食、低盐等">
+                </div>
+            </div>
+        </div>
+        
+        <button class="analyze-btn" id="analyzeBtn" disabled>开始分析</button>
+        
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <p>正在分析图片中的食物...</p>
+        </div>
+        
+        <div class="error" id="error"></div>
+        
+        <div class="results" id="results">
+            <div class="result-section">
+                <h3>🔍 图片分析结果</h3>
+                <p id="imageDescription"></p>
+            </div>
+            
+            <div class="result-section">
+                <h3>📊 营养成分分析</h3>
+                <div class="nutrition-facts" id="nutritionFacts"></div>
+                <div>
+                    <strong>识别的食物：</strong>
+                    <span id="foodItems"></span>
+                </div>
+                <div style="margin-top: 10px;">
+                    <strong>健康评分：</strong>
+                    <span id="healthScore"></span>/10
+                </div>
+            </div>
+            
+            <div class="result-section">
+                <h3>💡 营养建议</h3>
+                <ul class="recommendations" id="recommendations"></ul>
+            </div>
+            
+            <div class="result-section">
+                <h3>🍎 推荐替代食物</h3>
+                <ul class="recommendations" id="alternatives"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewImage = document.getElementById('previewImage');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const error = document.getElementById('error');
+        
+        let selectedFile = null;
+        
+        // 上传区域事件
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+        
+        function handleFileSelect(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('请选择图片文件');
+                return;
+            }
+            
+            if (file.size > 10 * 1024 * 1024) {
+                showError('图片大小不能超过 10MB');
+                return;
+            }
+            
+            selectedFile = file;
+            
+            // 显示预览
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewImage.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+            
+            analyzeBtn.disabled = false;
+            hideError();
+        }
+        
+        analyzeBtn.addEventListener('click', analyzeImage);
+        
+        async function analyzeImage() {
+            if (!selectedFile) return;
+            
+            // 收集用户偏好
+            const preferences = {
+                age: document.getElementById('age').value ? parseInt(document.getElementById('age').value) : null,
+                gender: document.getElementById('gender').value || null,
+                weight: document.getElementById('weight').value ? parseFloat(document.getElementById('weight').value) : null,
+                height: document.getElementById('height').value ? parseFloat(document.getElementById('height').value) : null,
+                activity_level: document.getElementById('activity').value,
+                dietary_restrictions: document.getElementById('restrictions').value ? 
+                    document.getElementById('restrictions').value.split('，').map(s => s.trim()) : []
+            };
+            
+            // 显示加载状态
+            loading.style.display = 'block';
+            results.style.display = 'none';
+            analyzeBtn.disabled = true;
+            hideError();
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                formData.append('preferences', JSON.stringify(preferences));
+                
+                const response = await fetch('/analyze/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayResults(data.analysis);
+                } else {
+                    throw new Error(data.error || '分析失败');
+                }
+                
+            } catch (err) {
+                showError('分析失败：' + err.message);
+            } finally {
+                loading.style.display = 'none';
+                analyzeBtn.disabled = false;
+            }
+        }
+        
+        function displayResults(analysis) {
+            // 图片描述
+            document.getElementById('imageDescription').textContent = analysis.image_description || '无法识别图片内容';
+            
+            // 营养成分
+            if (analysis.nutrition_facts) {
+                const facts = analysis.nutrition_facts;
+                document.getElementById('foodItems').textContent = facts.food_items ? facts.food_items.join('、') : '未识别';
+                document.getElementById('healthScore').textContent = facts.health_score || 'N/A';
+                
+                const nutritionFacts = document.getElementById('nutritionFacts');
+                nutritionFacts.innerHTML = '';
+                
+                // 显示热量
+                if (facts.total_calories) {
+                    nutritionFacts.innerHTML += `
+                        <div class="nutrition-item">
+                            <div class="nutrition-value">${facts.total_calories}</div>
+                            <div class="nutrition-label">大卡</div>
+                        </div>
+                    `;
+                }
+                
+                // 显示宏量营养素
+                if (facts.macronutrients) {
+                    Object.entries(facts.macronutrients).forEach(([key, value]) => {
+                        const labels = { protein: '蛋白质', fat: '脂肪', carbohydrates: '碳水化合物' };
+                        nutritionFacts.innerHTML += `
+                            <div class="nutrition-item">
+                                <div class="nutrition-value">${value}g</div>
+                                <div class="nutrition-label">${labels[key] || key}</div>
+                            </div>
+                        `;
+                    });
+                }
+            }
+            
+            // 营养建议
+            if (analysis.recommendations && analysis.recommendations.recommendations) {
+                const recommendationsList = document.getElementById('recommendations');
+                recommendationsList.innerHTML = '';
+                analysis.recommendations.recommendations.forEach(rec => {
+                    recommendationsList.innerHTML += `<li>${rec}</li>`;
+                });
+            }
+            
+            // 替代食物
+            if (analysis.recommendations && analysis.recommendations.alternative_foods) {
+                const alternativesList = document.getElementById('alternatives');
+                alternativesList.innerHTML = '';
+                analysis.recommendations.alternative_foods.forEach(food => {
+                    alternativesList.innerHTML += `<li>${food}</li>`;
+                });
+            }
+            
+            results.style.display = 'block';
+        }
+        
+        function showError(message) {
+            error.textContent = message;
+            error.style.display = 'block';
+        }
+        
+        function hideError() {
+            error.style.display = 'none';
+        }
+    </script>
+</body>
+</html>

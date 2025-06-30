@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  nutrition-agent:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      - DASHSCOPE_API_BASE=${DASHSCOPE_API_BASE:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+    volumes:
+      - .:/app
+    command: python run_agent.py
+    restart: unless-stopped
+    networks:
+      - nutrition-network
+
+  # 可选：添加Redis用于缓存
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - nutrition-network
+    restart: unless-stopped
+
+  # 可选：添加PostgreSQL用于数据持久化
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=nutrition_agent
+      - POSTGRES_USER=agent
+      - POSTGRES_PASSWORD=agent_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - nutrition-network
+    restart: unless-stopped
+
+networks:
+  nutrition-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
