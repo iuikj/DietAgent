@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from prc.nutrition_agent import NutritionAgent
+
 from langgraph_sdk import get_client
 
 app = FastAPI(
@@ -36,8 +36,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# # 初始化营养师Agent
-nutrition_agent = NutritionAgent()
+
 client = get_client(url="http://127.0.0.1:2024")
 
 
@@ -174,123 +173,9 @@ async def analyze_uploaded_image(
         raise HTTPException(status_code=500, detail=f"处理图片时发生错误: {str(e)}")
 
 
-@app.post("/analyze/base64")
-async def analyze_base64_image(request: ImageAnalysisRequest):
-    """
-    使用base64编码的图片进行营养分析
-
-    Args:
-        request: 包含base64图片数据和用户偏好的请求
-
-    Returns:
-        营养分析结果
-    """
-    try:
-        # 验证base64数据
-        if not request.image_data:
-            raise HTTPException(status_code=400, detail="缺少图片数据")
-
-        # 尝试解码base64数据以验证有效性
-        try:
-            image_bytes = base64.b64decode(request.image_data)
-            Image.open(io.BytesIO(image_bytes))
-        except Exception:
-            raise HTTPException(status_code=400, detail="无效的图片数据")
-
-        # 调用营养师Agent进行分析
-        assistant = client.assistants.create(
-            name="nutrition_agent",
-            config={
-                "configurable": {
-                    "vision_model": "qwen-vl-max",
-                    "analysis_model": "qwen3-32b"
-                }
-            }
-        )
-        thread = client.threads.create()
-        run = await client.runs.create(
-            assistant_id=assistant.id,
-            thread_id=thread.id,
-            input={
-                "image_data": request.image_data,
-                "user_preferences": request.user_preferences
-            }
-        )
-        result = await client.threads.get_state(thread["thread_id"])
-        print(result)
-        # result = nutrition_agent.process_image(
-        #     request.image_data,
-        #     request.user_preferences
-        # )
-
-        if not result["success"]:
-            raise HTTPException(status_code=500, detail=result["error_message"])
-
-        # 格式化返回结果
-        response = {
-            "success": True,
-            "analysis": {
-                "image_description": result["image_analysis"],
-                "nutrition_facts": result["nutrition_analysis"].__dict__ if result["nutrition_analysis"] else None,
-                "recommendations": result["nutrition_advice"].__dict__ if result["nutrition_advice"] else None
-            },
-            "processing_step": result["current_step"]
-        }
-
-        return JSONResponse(content=response)
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"分析图片时发生错误: {str(e)}")
 
 
-@app.post("/analyze/stream")
-async def analyze_image_stream(
-        file: UploadFile = File(...),
-        preferences: Optional[str] = Form(None)
-):
-    """
-    流式返回营养分析结果
-    """
-    try:
-        # 读取并编码图片
-        image_data = await file.read()
-        image_base64 = base64.b64encode(image_data).decode('utf-8')
 
-        # 解析用户偏好
-        user_prefs = {}
-        if preferences:
-            user_prefs = json.loads(preferences)
-
-        async def generate_analysis():
-            """生成器函数，流式返回分析步骤"""
-            yield f"data: {json.dumps({'step': 'start', 'message': '开始分析图片...'}, ensure_ascii=False)}\n\n"
-
-            # 这里可以修改Agent以支持流式处理
-            result = nutrition_agent.process_image(image_base64, user_prefs)
-
-            if result["success"]:
-                yield f"data: {json.dumps({'step': 'image_analysis', 'data': result['image_analysis']}, ensure_ascii=False)}\n\n"
-
-                if result["nutrition_analysis"]:
-                    yield f"data: {json.dumps({'step': 'nutrition_analysis', 'data': result['nutrition_analysis'].__dict__}, ensure_ascii=False)}\n\n"
-
-                if result["nutrition_advice"]:
-                    yield f"data: {json.dumps({'step': 'nutrition_advice', 'data': result['nutrition_advice'].__dict__}, ensure_ascii=False)}\n\n"
-
-                yield f"data: {json.dumps({'step': 'complete', 'message': '分析完成'}, ensure_ascii=False)}\n\n"
-            else:
-                yield f"data: {json.dumps({'step': 'error', 'message': result['error_message']}, ensure_ascii=False)}\n\n"
-
-        return StreamingResponse(
-            generate_analysis(),
-            media_type="text/plain",
-            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
-        )
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"流式分析失败: {str(e)}")
 
 
 @app.get("/models/available")
